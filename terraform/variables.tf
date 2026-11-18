@@ -6,3 +6,8 @@ variable "cluster_name" {
   type    = string
   default = "main-eks"
 }
+
+variable "min_node_size" {
+  type    = number
+  default = 1
+}

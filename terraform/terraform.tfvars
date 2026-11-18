@@ -5,3 +5,5 @@ ecr_repos = [
 ]
 
 cluster_name = "main-eks"
+
+min_node_size = 2

@@ -51,3 +51,34 @@ resource "aws_eks_node_group" "nodes" {
     aws_iam_role_policy_attachment.eks_ecr_readonly,
   ]
 }
+
+resource "aws_eks_addon" "pod_identity_agent" {
+  cluster_name = aws_eks_cluster.this.name
+  addon_name   = "eks-pod-identity-agent"
+
+  depends_on = [
+    aws_eks_node_group.nodes,
+  ]
+}
+
+resource "aws_eks_pod_identity_association" "ebs_csi" {
+  cluster_name    = aws_eks_cluster.this.name
+  namespace       = "kube-system"
+  service_account = "ebs-csi-controller-sa"
+  role_arn        = aws_iam_role.ebs_csi_role.arn
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_ebs_csi_policy,
+    aws_eks_addon.pod_identity_agent,
+  ]
+}
+
+resource "aws_eks_addon" "ebs_csi_driver" {
+  cluster_name = aws_eks_cluster.this.name
+  addon_name   = "aws-ebs-csi-driver"
+
+  depends_on = [
+    aws_eks_node_group.nodes,
+    aws_eks_pod_identity_association.ebs_csi,
+  ]
+}
