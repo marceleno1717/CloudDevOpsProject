@@ -1,0 +1,36 @@
+ECR
+---
+
+docker build . -t <account_id>.dkr.ecr.eu-north-1.amazonaws.com/<ecr_repo_name>:<ay_tag>
+
+aws ecr get-login-password --region eu-north-1
+
+docker login -u AWS -p <password men fo2> <account_id>.dkr.ecr.eu-north-1.amazonaws.com
+
+docker push <account_id>.dkr.ecr.eu-north-1.amazonaws.com/<ecr_repo_name>:<wel_tag_bta3ha>
+
+-------------------------
+
+EKS
+----
+aws eks update-kubeconfig --region eu-north-1 --name main-eks
+kubectl get nodes -o wide
+-----------------------------
+
+kubectl
+--------
+
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/
+
+cd helm/
+helm upgrade --install frontend ./frontend -n ivolve
+helm upgrade --install auth ./auth-service/ -n ivolve
+helm upgrade --install roadmap ./roadmap-service/ -n ivolve
+
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+kubectl create namespace argocd
+helm install argocd argo/argo-cd --namespace argocd
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+kubectl port-forward service/argocd-server -n argocd 8080:443
