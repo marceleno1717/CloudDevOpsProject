@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
   repository: 807462092669.dkr.ecr.eu-north-1.amazonaws.com/auth-service
-  tag: 44f802a
+  tag: 490e342
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
