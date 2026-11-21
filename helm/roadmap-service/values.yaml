@@ -1,10 +1,8 @@
 replicaCount: 1
-
 image:
   repository: 807462092669.dkr.ecr.eu-north-1.amazonaws.com/roadmap-service
-  tag: latest
+  tag: 44f802a
   pullPolicy: IfNotPresent
-
 service:
   type: ClusterIP
   port: 8080
