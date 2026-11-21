@@ -18,38 +18,7 @@ Infrastructure is managed with Terraform, workloads are packaged with Helm and s
 
 ## Architecture
 
-### AWS & EKS Topology
-
-```mermaid
-flowchart TB
-    User[Browser] -->|HTTP :80| ELB[AWS LoadBalancer<br/>Public Subnets: 10.0.1.0/24, 10.0.3.0/24]
-
-    subgraph VPC[VPC 10.0.0.0/16 - eu-north-1]
-        IGW[Internet Gateway]
-        NAT[NAT Gateway<br/>Public Subnet A]
-        ECR[Amazon ECR<br/>frontend / auth-service / roadmap-service]
-
-        subgraph EKS[EKS main-eks - v1.35]
-            Ingress[ingress-nginx<br/>ns: ingress-nginx]
-            Argo[ArgoCD<br/>ns: argocd]
-
-            subgraph Private[Private Subnets: 10.0.2.0/24 in AZ-a, 10.0.4.0/24 in AZ-b]
-                FE[frontend :3000]
-                AUTH[auth-service :5000]
-                ROAD[roadmap-service :8080]
-                DB[(mysql-0 :3306<br/>StatefulSet)]
-            end
-
-            EBS[(EBS gp3 2Gi<br/>ebs-csi-driver + Pod Identity)]
-        end
-
-        ELB --> Ingress --> FE
-        FE --> AUTH --> DB --- EBS
-        FE --> ROAD
-        Private --> NAT --> IGW
-        Private -.-> ECR
-    end
-```
+![CloudDevOpsProject Architecture](docs/architecture.jpg)
 
 How traffic and networking are wired:
 - Worker nodes live in two private subnets across `eu-north-1a` (`10.0.2.0/24`) and `eu-north-1b` (`10.0.4.0/24`), with one EKS managed node group per subnet so nodes are always spread across both AZs.
@@ -57,21 +26,11 @@ How traffic and networking are wired:
 - `ingress-nginx` creates an internet-facing AWS Load Balancer in the public subnets (tagged `kubernetes.io/role/elb = 1`) and routes `/` to `frontend:3000`.
 - MySQL runs as a `StatefulSet` in the `ivolve` namespace with a 2Gi `gp3` EBS volume provisioned by `aws-ebs-csi-driver`, authenticated using EKS Pod Identity.
 
-### CI/CD & GitOps Flow
+### CI/CD & GitOps
 
-```mermaid
-flowchart LR
-    Push[Push to main<br/>app/service/**] --> GHA[GitHub Actions]
-    GHA -->|OIDC JWT| STS[AWS STS<br/>github-actions-ecr-role]
-    STS --> Build[Docker Build<br/>short-sha + latest]
-    Build --> Trivy[Trivy Scan<br/>HIGH/CRITICAL, non-blocking]
-    Trivy --> ECR[Push to ECR]
-    ECR --> Helm[yq updates<br/>helm/service/values.yaml]
-    Helm -->|commit with skip ci| Repo[GitHub main]
-    Repo --> Argo[ArgoCD Auto-Sync] --> EKS[EKS Rollout]
-```
+![CI/CD & GitOps Pipeline Flow](docs/cicd-flow.jpg)
 
-Each microservice has its own workflow under `.github/workflows/`. Workflows only trigger when files under `app/<service>/**` change (or via manual dispatch). After pushing the image tagged with the 7-char commit SHA, the workflow updates `.image.tag` in `helm/<service>/values.yaml` and pushes back to `main` with `[skip ci]`. ArgoCD picks up the commit and rolls out the new pods.
+Each microservice has its own workflow under `.github/workflows/`. Workflows only trigger when files under `app/<service>/**` change (or via manual dispatch). They authenticate to AWS with OIDC (`github-actions-ecr-role`), build and scan the image with Trivy (`HIGH`/`CRITICAL`, non-blocking), push `<short-sha>` and `latest` to ECR, and update `.image.tag` in `helm/<service>/values.yaml` with `[skip ci]`. ArgoCD picks up the commit and rolls out the new pods.
 
 ## Services
 
@@ -88,6 +47,7 @@ Each microservice has its own workflow under `.github/workflows/`. Workflows onl
 .github/workflows/   # frontend.yml, auth-service.yml, roadmap-service.yml
 app/                 # Service source code and Dockerfiles
 compose/             # Local docker compose stack
+docs/                # Architecture diagram
 helm/                # Helm charts (values.yaml image tags updated by CI)
 k8s/                 # Namespace, ebs-sc StorageClass, ConfigMap, Secret, MySQL StatefulSet
 terraform/           # S3 backend, VPC, ECR, EKS (+ Pod Identity & EBS CSI), GitHub OIDC role
