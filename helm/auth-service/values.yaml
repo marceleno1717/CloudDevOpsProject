@@ -1,18 +1,14 @@
 replicaCount: 1
-
 image:
   repository: 807462092669.dkr.ecr.eu-north-1.amazonaws.com/auth-service
-  tag: latest
+  tag: 44f802a
   pullPolicy: IfNotPresent
-
 service:
   type: ClusterIP
   port: 5000
-
 env:
   DB_HOST: "mysql"
   DB_PORT: "3306"
   DB_NAME: "ivolve"
-
 secretRef:
   name: app-secret
